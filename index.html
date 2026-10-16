@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Colección de Pikachu de Cielo</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f5f5f5;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 4px;
+    font-size: 22px;
+  }
+  h2 {
+    text-align: center;
+    color: #888;
+    font-size: 13px;
+    font-weight: normal;
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+  #counter {
+    text-align: center;
+    font-size: 15px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 14px;
+  }
+  #counter span { color: #2e7d32; }
+  #controls {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  button {
+    padding: 10px 20px;
+    font-size: 14px;
+    background: #e3350d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 0 4px;
+  }
+  button:hover { background: #c22a0a; }
+  button.secondary {
+    background: #666;
+  }
+  button.secondary:hover { background: #444; }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) {
+    #grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 700px) {
+    #grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 500px) {
+    #grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .card {
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    user-select: none;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  }
+  .card img {
+    width: 100%;
+    display: block;
+    border-radius: 6px;
+    pointer-events: none;
+  }
+  .card .check {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(46, 125, 50, 0.35);
+    border-radius: 8px;
+    font-size: 60px;
+    color: #2e7d32;
+    text-shadow: 0 0 10px white, 0 0 4px white;
+    font-weight: bold;
+  }
+  .card.owned .check { display: flex; }
+  .card.owned {
+    outline: 3px solid #2e7d32;
+  }
+</style>
+</head>
+<body>
+
+<h1>Colección de Pikachu de Cielo</h1>
+<h2>30th Celebration — Pikachu Collection</h2>
+
+<div id="counter">Coleccionadas: <span id="ownedCount">0</span> / 30</div>
+
+<div id="controls">
+  <button class="secondary" id="resetBtn">Resetear todo</button>
+</div>
+
+<div id="grid"></div>
+
+<script>
+const BASE = "https://den-cards.pokellector.com/434/";
+const STORAGE_KEY = "pikachu-30c-checks-v1";
+
+const FILES = [
+  "Pikachu.30C.23.62062.thumb.png",
+  "Pikachu.30C.24.62063.thumb.png",
+  "Pikachu.30C.25.62064.thumb.png",
+  "Pikachu.30C.26.62065.thumb.png",
+  "Pikachu.30C.27.62066.thumb.png",
+  "Pikachu.30C.28.62067.thumb.png",
+  "Pikachu.30C.29.62068.thumb.png",
+  "Pikachu.30C.30.62069.thumb.png",
+  "Pikachu.30C.31.62070.thumb.png",
+  "Pikachu.30C.32.62071.thumb.png",
+  "Pikachu.30C.33.62072.thumb.png",
+  "Pikachu.30C.34.62073.thumb.png",
+  "Pikachu.30C.35.62074.thumb.png",
+  "Pikachu.30C.36.61606.thumb.png",
+  "Pikachu.30C.37.61605.thumb.png",
+  "Pikachu.30C.38.62075.thumb.png",
+  "Pikachu.30C.39.62076.thumb.png",
+  "Pikachu.30C.40.62077.thumb.png",
+  "Pikachu.30C.41.62078.thumb.png",
+  "Pikachu.30C.42.62079.thumb.png",
+  "Pikachu.30C.43.62080.thumb.png",
+  "Pikachu.30C.44.62081.thumb.png",
+  "Pikachu.30C.45.62082.thumb.png",
+  "Pikachu.30C.46.62083.thumb.png",
+  "Pikachu.30C.47.61604.thumb.png",
+  "Pikachu.30C.48.62084.thumb.png",
+  "Pikachu.30C.49.62085.thumb.png",
+  "Pikachu.30C.50.62086.thumb.png",
+  "Pikachu.30C.51.62087.thumb.png",
+  "Pikachu.30C.52.62088.thumb.png"
+];
+
+const grid = document.getElementById("grid");
+const ownedCountEl = document.getElementById("ownedCount");
+const resetBtn = document.getElementById("resetBtn");
+
+// Cargar estado guardado
+let owned = loadState();
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(owned));
+  } catch (e) {
+    console.warn("No se pudo guardar:", e);
+  }
+}
+
+function updateCounter() {
+  const total = Object.values(owned).filter(Boolean).length;
+  ownedCountEl.textContent = total;
+}
+
+// Construir las cartas
+FILES.forEach((file, idx) => {
+  const key = file; // usamos el nombre del archivo como clave única
+  const card = document.createElement("div");
+  card.className = "card";
+  if (owned[key]) card.classList.add("owned");
+
+  const img = document.createElement("img");
+  img.src = BASE + file;
+  img.alt = "Pikachu #" + (23 + idx);
+  img.loading = "eager";
+
+  const check = document.createElement("div");
+  check.className = "check";
+  check.textContent = "✓";
+
+  card.appendChild(img);
+  card.appendChild(check);
+
+  card.addEventListener("click", () => {
+    owned[key] = !owned[key];
+    card.classList.toggle("owned", owned[key]);
+    saveState();
+    updateCounter();
+  });
+
+  grid.appendChild(card);
+});
+
+updateCounter();
+
+// Reset
+resetBtn.addEventListener("click", () => {
+  if (!confirm("¿Seguro que quieres quitar todas las marcas?")) return;
+  owned = {};
+  saveState();
+  document.querySelectorAll(".card").forEach(c => c.classList.remove("owned"));
+  updateCounter();
+});
+</script>
+
+</body>
+</html>
